@@ -1,0 +1,116 @@
+#!/usr/bin/env bash
+#cito M:755 O:0 G:0 T:/usr/bin/mift
+#------------------------------------------------------------------------------
+# Project Name      - Extra/source/mift/mift
+# Started On        - Thu 10 Jun 21:06:01 BST 2021
+# Last Change       - Thu 10 Jun 22:04:09 BST 2021
+# Author E-Mail     - terminalforlife@yahoo.com
+# Author GitHub     - https://github.com/terminalforlife
+#------------------------------------------------------------------------------
+# A rewrite of and hopefully massive improvement over MIF. MIFT stands for
+# Movie Index Filter Two.
+#
+# Features:
+#
+# N/A
+#
+# Bugs:
+#
+# N/A
+#
+# Dependencies:
+#
+#   bash (>= 4.3-14)
+#   coreutils (>= 8.28)
+#------------------------------------------------------------------------------
+
+CurVer='2021-06-10'
+Progrm=${0##*/}
+
+Usage(){
+	while read; do
+		printf '%s\n' "$REPLY"
+	done <<-EOF
+		Usage: $Progrm [OPTS] [YEAR]
+
+		  -h, --help               - Displays this help information.
+		  -v, --version            - Output only the version datestamp.
+		  -m, --mklist             - Output a $Progrm-usable list from CWD.
+		  -r, --reverse            - Sort films from oldest to newest.
+	EOF
+}
+
+Err(){
+	printf 'ERROR: %s\n' "$2" 1>&2
+	[ $1 -gt 0 ] && exit $1
+}
+
+# Valid video extensions used for the listing and organising of files.
+VideoExtensions=(
+	'.WEBM' '.MPG' '.MP2' '.MPEG' '.MPE' '.MPV' '.OGG' '.MP4'
+	'.M4P' '.M4V' '.AVI' '.WMV' '.MOV' '.QT' '.FLV' '.SWF'
+)
+
+Reverse='-r'
+
+while [ "$1" ]; do
+	case $1 in
+		--help|-h|-\?)
+			Usage; exit 0 ;;
+		--version|-v)
+			printf '%s\n' "$CurVer"; exit 0 ;;
+		--mklist|-m)
+			shift; MakeListDir=$1 ;;
+		--reverse|-r)
+			Reverse= ;;
+		-*)
+			Err 1 'Incorrect option(s) specified.' ;;
+		*)
+			break ;;
+	esac
+	shift
+done
+
+DepCount=0
+for Dep in sort mkdir mv; do
+	if ! type -P "$Dep" &> /dev/null; then
+		Err 0 "Dependency '$Dep' not met."
+		let DepCount++
+	fi
+done
+
+[ $DepCount -gt 0 ] && exit 1
+
+#----------------------------------------------------------Display A Movie List
+
+if [ -n "$MakeListDir" ]; then
+	declare -A Films
+	for Dir in "${MakeListDir%/}"/*; {
+		[ -d "$Dir" ] || continue
+
+		for File in "$Dir"/*; {
+			[ -f "$File" ] || continue
+
+			IsValid='False'
+			for Valid in "${VideoExtensions[@]}"; {
+				[ "$Valid" == "${File#*.}" ] && IsValid='True'
+			}
+
+			[ "$IsValid" == 'True' ] && continue
+
+			Film=${File##*/}
+			Year=${Film##*(}
+			Year=${Year%%)*}
+			Films[$Film]=$Year
+		}
+	}
+
+	for Film in "${!Films[@]}"; {
+		printf '%s[+]: %s\n' "${Films[$Film]}"\
+			"${Film% ([[:digit:]][[:digit:]][[:digit:]][[:digit:]]).*}"
+	} | sort $Reverse
+fi
+
+#------------------------------------------------------------------------------
+
+
