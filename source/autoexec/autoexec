@@ -3,29 +3,22 @@
 #------------------------------------------------------------------------------
 # Project Name      - Extra/source/autoexec/autoexec
 # Started On        - Thu 31 Oct 22:49:41 GMT 2019
-# Last Change       - Sun 27 Jun 06:35:28 BST 2021
+# Last Change       - Sun 27 Jun 20:52:40 BST 2021
 # Author E-Mail     - terminalforlife@yahoo.com
 # Author GitHub     - https://github.com/terminalforlife
 #------------------------------------------------------------------------------
 # Features:
 #
-#TODO: Use sensible keys in configuration file. (IE: 'Color' VS 'NoColor')
 #TODO: Add timing functionality to C FILEs.
 #TODO: Consider support for Node.js.
-#TODO: Use POSIX character classes instead of regular ones.
 #
 # Bugs:
 #
-#TODO: Flags given to the shebang's executable are ignored.
+#TODO: When using `-e`|`--exec`, flags for it are included as a single word.
 #
-#      This problem went unnoticed for far too long. This is especially
-#      problematic with AWK scripts, because they need the `-f` argument.
+#      This isn't so much of a bug as an intentional oversight. I'd like to
+#      address this eventually, but it's not a priority, right now.
 #
-#      Consider completely switching AutExec Over to letting the kernel handle
-#      the execution, and so requiring the files have the execute bit set? Not
-#      ideal at all, but doable.
-#
-#TODO: Flags don't work, because configuration file has priority.
 #TODO: Using AutoExec for man pages (pagers) is buggy, but functional.
 #
 #      More specifically, the prompt shows through and when ^C-ing, the last
@@ -84,6 +77,16 @@ TIMEFORMAT='[R:%3R|U:%3U|S:%3S|P:%P]'
 MainDir="$HOME/.config/autoexec"
 Config="$MainDir/config"
 
+Check=False
+Color=True
+ExitStatus=True
+Force=False
+Refresh=0.05
+Spinner=True
+Time=False
+WaitMSG=True
+
+# `OR_*` are override flags.
 while [ "$1" ]; do
 	case $1 in
 		--)
@@ -107,26 +110,35 @@ while [ "$1" ]; do
 
 			if [ -z "$1" ]; then
 				Err 1 'Unspecified refresh rate.'
-			elif ! [[ $1 =~ ^([0-9]+|[0-9]+.[0-9]+)$ ]]; then
+			elif ! [[ $1 =~ ^([[:digit:]]+|[[:digit:]]+.[[:digit:]]+)$ ]]; then
 				Err 1 'Invalid refresh rate.'
 			else
+				OR_Refresh='True'
 				Refresh=$1
 			fi ;;
 		--once|-o)
-			Once='true' ;;
+			OR_Once='True'
+			Once='True' ;;
 		--no-waitmsg|-W)
+			OR_WaitMSG='True'
 			WaitMSG='False' ;;
 		--no-spinner|-S)
+			OR_Spinner='True'
 			Spinner='False' ;;
 		--no-exit|-E)
+			OR_ExitStatus='True'
 			ExitStatus='False' ;;
 		--no-color|-C)
+			OR_Color='True'
 			Color='False' ;;
 		--force|-f)
+			OR_Force='True'
 			Force='True' ;;
 		--time|-t)
+			OR_Time='True'
 			Time='True' ;;
 		--check|-c)
+			OR_Check='True'
 			Check='True' ;;
 		-*)
 			Err 1 'Incorrect option(s) specified.' ;;
@@ -136,7 +148,7 @@ while [ "$1" ]; do
 	shift
 done
 
-if [ "$Once" == 'true' -a ${#Refresh} -gt 0 ]; then
+if [ "$Once" == 'True' -a ${#Refresh} -gt 0 ]; then
 	Err 1 "Options '--once|-o' and '--refresh|-r' aren't compatible."
 fi
 
@@ -193,25 +205,25 @@ if [ -f "$Config" ]; then
 
 		case $Key in
 			Color)
-				[ -n "$Color" ] && continue
+				[ "$OR_Color" == 'True' ] && continue
 				Boolean "$Key" "$Value" && Color=$Value ;;
 			ExitStatus)
-				[ -n "$ExitStatus" ] && continue
+				[ "$OR_ExitStatus" == 'True' ] && continue
 				Boolean "$Key" "$Value" && ExitStatus=$Value ;;
 			Spinner)
-				[ -n "$Spinner" ] && continue
+				[ "$OR_Spinner" == 'True' ] && continue
 				Boolean "$Key" "$Value" && Spinner=$Value ;;
 			WaitMSG)
-				[ -n "$WaitMSG" ] && continue
+				[ "$OR_WaitMSG" == 'True' ] && continue
 				Boolean "$Key" "$Value" && WaitMSG=$Value ;;
 			Check)
-				[ -n "$Check" ] && continue
+				[ "$OR_Check" == 'True' ] && continue
 				Boolean "$Key" "$Value" && Check=$Value ;;
 			Force)
-				[ -n "$Force" ] && continue
+				[ "$OR_Force" == 'True' ] && continue
 				Boolean "$Key" "$Value" && Force=$Value ;;
 			Refresh)
-				[ -n "$Refresh" ] && continue
+				[ "$OR_Refresh" == 'True' ] && continue
 
 				REGEX='^([[:digit:]]+|[[:digit:]]+\.[[:digit:]]+)$'
 				if [[ $Value =~ $REGEX ]]; then
@@ -220,7 +232,7 @@ if [ -f "$Config" ]; then
 					Err 0 "Key '$Key' given invalid refresh rate."
 				fi ;;
 			Time)
-				[ -n "$Time" ] && continue
+				[ "$OR_Time" == 'True' ] && continue
 				Boolean "$Key" "$Value" && Time=$Value ;;
 			*)
 				Err 0 "Key '$Key' invalid."
@@ -272,7 +284,7 @@ case $ExecFile in
 esac
 
 TRAP(){
-	if [ "$Once" != 'true' ]; then
+	if [ "$Once" != 'True' ]; then
 		tput ed
 		tput rmcup
 	fi
@@ -291,9 +303,9 @@ TRAP(){
 
 trap 'TRAP' SIGINT EXIT
 
-[ "$Once" == 'true' ] || tput smcup
+[ "$Once" == 'True' ] || tput smcup
 
-if [ "$Once" != 'true' ]; then
+if [ "$Once" != 'True' ]; then
 	WinchHandler(){
 		tput clear
 		Lines=`tput lines`
@@ -305,45 +317,36 @@ if [ "$Once" != 'true' ]; then
 	WinchHandler
 fi
 
-Interpreter(){
-	type -P "$1" &> /dev/null ||
-		Err 1 "Interpreter '$1' not found."
-
-	Exec=$1
-}
-
 while :; do
 	# Determine the interpreter to use.
 	if [ "$CFound" != 'True' ] && [ -z "$Exec" ]; then
-		read SheBang < "$ExecFile"
-		SheBang1=${SheBang#*\!}
-		SheBang2=${SheBang1##*/}
-		SheBang3=${SheBang2%% *}
-		case $SheBang3 in
-			env)
-				SheBang2A=${SheBang2#env }
-				Interpreter "${SheBang2A%% *}" ;;
-			*)
-				Interpreter "$SheBang3" ;;
-		esac
+		if [ -z "$1" ]; then
+			read Line < "$ExecFile"
+		else
+			Line=$1
+		fi
+
+		ExecStr=${Line#\#!}
+		ExecPath=${Command%%* }
+		ExecBase=${ExecPath##*/}
 	fi
 
 	if [ -f "$ExecFile" ] && [ -r "$ExecFile" ]; then
 		SSE=`stat -c '%Y' "$ExecFile" 2> /dev/null`
 
-		if [ 0${SSEOld//[!0-9]} -lt 0${SSE//[!0-9]} ]; then
-			[ "$Once" == 'true' ] || tput clear
+		if [ 0${SSEOld//[![:digit:]]} -lt 0${SSE//[![:digit:]]} ]; then
+			[ "$Once" == 'True' ] || tput clear
 
 			# If using DASH or BASH, check for errors before executing.
 			if [ "$Check" == 'True' ]; then
 				unset Errors
-				if [ "$Exec" == 'bash' ]; then
-					bash -n "$ExecFile" || Errors='True'
-				elif [ "$Exec" == 'sh' ]; then
+				if [ "$ExecBase" == 'bash' ]; then
+					$ExecStr -n "$ExecFile" || Errors='True'
+				elif [ "$ExecBase" == 'sh' ]; then
 					File=`type -P sh`
 					Link=`readlink -e "$File"`
 					if [ "$Link" == '/bin/dash' ]; then
-						dash -n "$ExecFile" || Errors='True'
+						/bin/dash -n "$ExecFile" || Errors='True'
 					else
 						UnsupportedCheck='True'
 					fi
@@ -371,10 +374,10 @@ while :; do
 					fi
 				else
 					if [ "$Time" == 'True' ]; then
-						time "$Exec" "$ExecFile" "$@"
+						time $ExecStr "$ExecFile" "$@"
 						Exit=$?
 					else
-						"$Exec" "$ExecFile" "$@"
+						$ExecStr "$ExecFile" "$@"
 						Exit=$?
 					fi
 				fi
@@ -384,16 +387,16 @@ while :; do
 			fi
 		fi
 
-		SSEOld=${SSE//[!0-9]}
+		SSEOld=${SSE//[![:digit:]]}
 	else
-		if [ "$Once" != 'true' ]; then
+		if [ "$Once" != 'True' ]; then
 			tput ed; tput rmcup
 		fi
 
 		Err 1 'File not found or inaccessible.'
 	fi
 
-	if [ "$Once" != 'true' ]; then
+	if [ "$Once" != 'True' ]; then
 		# Have the exit status on the bottom-right of the terminal.
 		if [ "$ExitStatus" == 'True' ]; then
 			tput cup $Lines $((Columns - 3))
@@ -434,7 +437,7 @@ while :; do
 		fi
 	fi
 
-	[ "$Once" == 'true' ] && exit 0
+	[ "$Once" == 'True' ] && exit 0
 
 	sleep $Refresh
 done
