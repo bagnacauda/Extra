@@ -3,7 +3,7 @@
 #------------------------------------------------------------------------------
 # Project Name      - Extra/source/autoexec/autoexec
 # Started On        - Thu 31 Oct 22:49:41 GMT 2019
-# Last Change       - Sun 27 Jun 20:52:40 BST 2021
+# Last Change       - Wed  7 Jul 07:29:35 BST 2021
 # Author E-Mail     - terminalforlife@yahoo.com
 # Author GitHub     - https://github.com/terminalforlife
 #------------------------------------------------------------------------------
@@ -13,6 +13,11 @@
 #TODO: Consider support for Node.js.
 #
 # Bugs:
+#
+#TODO: When giving the FILE an argument (IE: `-h`), AE spits out an error.
+#
+#      $ ae FILE -h
+#      /usr/bin/ae: line 380: -h: command not found
 #
 #TODO: When using `-e`|`--exec`, flags for it are included as a single word.
 #
@@ -38,7 +43,7 @@
 #   ncurses-bin (>= 6.1-1)
 #------------------------------------------------------------------------------
 
-CurVer='2021-06-27'
+CurVer='2021-07-07'
 Progrm=${0##*/}
 ProgrmFancy='AutoExec'
 
