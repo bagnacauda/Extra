@@ -3,7 +3,7 @@
 #------------------------------------------------------------------------------
 # Project Name      - Extra/source/autoexec/autoexec
 # Started On        - Thu 31 Oct 22:49:41 GMT 2019
-# Last Change       - Wed 27 Apr 14:26:54 BST 2022
+# Last Change       - Wed 27 Apr 15:37:04 BST 2022
 # Author E-Mail     - terminalforlife@yahoo.com
 # Author GitHub     - https://github.com/terminalforlife
 #------------------------------------------------------------------------------
@@ -25,7 +25,6 @@
 #   bash (>= 4.4.18-2)
 #   coreutils (>= 8.28-1)
 #   file (>= 1:5.32-2)
-#   ncurses-bin (>= 6.1-1)
 #------------------------------------------------------------------------------
 
 CurVer='2022-04-27'
@@ -141,7 +140,7 @@ fi
 
 ExecFile=$1; shift
 
-for Dep in file tput stat realpath; {
+for Dep in file stat realpath; {
 	if ! type -P "$Dep" &> /dev/null; then
 		Err 0 "Dependency '$Dep' not met."
 		(( DepCount++ ))
@@ -166,9 +165,8 @@ fi
 
 SignalHandler() {
 	if [[ $Once != True ]]; then
-		tput ed
-		tput rmcup
-		tput cnorm
+		# Like: `tput ed` then `tput rmcup` then `tput cnorm`
+		printf '\e[J\e[?1049l\e[23;0;0t\e[?12l\e[?25h'
 	fi
 
 	if [[ -n $InterpreterMissing ]]; then
@@ -193,14 +191,26 @@ SignalHandler() {
 
 trap 'SignalHandler' SIGINT EXIT
 
-[[ $Once == True ]] || tput smcup
+if [[ $Once != True ]]; then
+	# Like: `tput smcup`
+	printf '\e[?1049h\e[22;0;0t'
+fi
 
 if [[ $Once != True ]]; then
 	shopt -s checkwinsize
-	tput clear
-	tput civis
-	trap 'tput clear' WINCH
+
+	# Like: `tput clear` then `tput civis`
+	printf '\e[3J\e[H\e[2J\e[?25l'
+
+	WinchHandler() {
+		# Like: `tput clear`
+		printf '\e[3J\e[H\e[2J'
+	}
+
+	trap WinchHandler WINCH
 fi
+
+#-----------------------------------------------------------------The Main Loop
 
 while :; do
 	if [[ -f $ExecFile && -r $ExecFile ]]; then
@@ -226,7 +236,10 @@ while :; do
 
 		SSE=`stat -c '%Y' "$ExecFile" 2> /dev/null`
 		if [[ ${SSEOld//[![:digit:]]} -lt ${SSE//[![:digit:]]} ]]; then
-			[[ $Once == True ]] || tput clear
+			if [[ $Once != True ]]; then
+				# Like: `tput clear`
+				printf '\e[3J\e[H\e[2J'
+			fi
 
 			# If using DASH, BASH, or ZSH, check for errors before executing.
 			if [[ $Check == True ]]; then
@@ -250,7 +263,9 @@ while :; do
 			fi
 
 			if [[ $Errors != True ]]; then
-				tput cnorm
+				# Like: `tput cnorm`
+				printf '\e[?12l\e[?25h'
+
 				if [[ $Time == True ]]; then
 					time $Exec "$ExecFile" "$@"
 					Exit=$?
@@ -258,7 +273,9 @@ while :; do
 					$Exec "$ExecFile" "$@"
 					Exit=$?
 				fi
-				tput civis
+
+				# Like: `tput civis`
+				printf '\e[?25l'
 			else
 				Exit=999
 			fi
@@ -267,7 +284,8 @@ while :; do
 		SSEOld=${SSE//[![:digit:]]}
 	else
 		if [[ $Once != True ]]; then
-			tput ed; tput rmcup
+			# Like: `tput ed` then `tput rmcup`
+			printf '\e[J\e[?1049l\e[23;0;0t'
 		fi
 
 		FileNotFoundErr='True'
@@ -277,7 +295,8 @@ while :; do
 	if [[ $Once != True ]]; then
 		# Have the exit status on the bottom-right of the terminal.
 		if [[ $ExitStatus == True ]]; then
-			tput cup $LINES $((COLUMNS - 3))
+			# Like: `tput cup Y X`
+			printf '\e[%d;%dH' $LINES $((COLUMNS - 3))
 
 			if [[ $Color == True ]]; then
 				if (( Exit == 0 )); then
@@ -293,7 +312,8 @@ while :; do
 		if [[ $WaitMSG == True ]]; then
 			if [[ $Spinner == True ]]; then
 				for Char in '|' '/' '-' '\'; {
-					tput cud $LINES
+					# Like: `tput cud Y`
+					printf '\e[%dB' $LINES
 
 					if [[ $Color == True ]]; then
 						printf '\r\e[2;37m[%s] Waiting for changes...\e[0m ' "$Char"
@@ -304,7 +324,8 @@ while :; do
 					read -n 1 -st 0.04
 				}
 			else
-				tput cud $LINES
+				# Like: `tput cud Y`
+				printf '\e[%dB' $LINES
 
 				if [[ $Color == True ]]; then
 					printf '\r\e[2;37mWaiting for changes...\e[0m '
