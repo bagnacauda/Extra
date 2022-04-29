@@ -10,6 +10,17 @@ Demonstrations of AutoExec can be found all over the YouTube channel of the auth
 
 As you might've guessed by now, this tool was written for **Linux**, so likely will _not_ work on operating systems like the BSDs, Apple's offerings, and surely Windows (maybe with WSL). If you'd like to help support such a platform, get in touch, so that perhaps we can sort out a patch or some sort of compatibility update.
 
+# Supported Environments
+
+Last Updated: **2022-04-29**
+
+The following list of terminal emulators are only the ones myself or others have been able to confirm as working with AE. Most _standard_ TEs should work with AE without any problems.
+
+* alacritty
+* xfce4-terminal
+
+EMACS is not supported, for the same reason bare TTYs are not supported.
+
 # Installation Instructions
 
 Installation can be done with [Cito](https://github.com/terminalforlife/Extra/blob/master/source/cito). Your best bet, however, is to install via AutoExec's [installation script](https://github.com/terminalforlife/Extra/blob/master/source/autoexec/autoexec-installer).
