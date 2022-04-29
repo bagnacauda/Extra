@@ -3,7 +3,7 @@
 #------------------------------------------------------------------------------
 # Project Name      - Extra/source/autoexec/autoexec
 # Started On        - Thu 31 Oct 22:49:41 GMT 2019
-# Last Change       - Fri 29 Apr 18:32:41 BST 2022
+# Last Change       - Fri 29 Apr 19:01:11 BST 2022
 # Author E-Mail     - terminalforlife@yahoo.com
 # Author GitHub     - https://github.com/terminalforlife
 #------------------------------------------------------------------------------
@@ -29,7 +29,7 @@
 #------------------------------------------------------------------------------
 
 CurVer='2022-04-29'
-Progrm=${0##*/}
+Progrm=${0##*/} # <-- Required.
 ProgrmFancy='AE'
 
 Usage() {
@@ -171,6 +171,11 @@ SignalHandler() {
 	if [[ $Once != True ]]; then
 		# Like: `tput ed` then `tput rmcup` then `tput cnorm`
 		printf '\e[J\e[?1049l\e[23;0;0t\e[?12l\e[?25h'
+	else
+		# Fixes wonky output when awaiting STDIN by target FILE. The downside
+		# is of course that the prompt or whatever it is will be removed, but I
+		# think it's an acceptible trade-off.
+		printf '\r'
 	fi
 
 	if [[ -n $InterpreterMissing ]]; then
@@ -241,10 +246,8 @@ while :; do
 
 		SSE=`stat -c '%Y' "$ExecFile" 2> /dev/null`
 		if [[ ${SSEOld//[![:digit:]]} -lt ${SSE//[![:digit:]]} ]]; then
-			if [[ $Once != True ]]; then
-				# Like: `tput clear`
-				printf '\e[3J\e[H\e[2J'
-			fi
+			# Like: `tput clear`
+			[[ $Once == True ]] || printf '\e[3J\e[H\e[2J'
 
 			# If using DASH, BASH, or ZSH, check for errors before executing.
 			if [[ $Check == True ]]; then
@@ -269,7 +272,7 @@ while :; do
 
 			if [[ $Errors != True ]]; then
 				# Like: `tput cnorm`
-				printf '\e[?12l\e[?25h'
+				[[ $Once == True ]] || printf '\e[?12l\e[?25h'
 
 				if [[ $Time == True ]]; then
 					time $Exec "$ExecFile" "$@"
@@ -280,7 +283,7 @@ while :; do
 				fi
 
 				# Like: `tput civis`
-				printf '\e[?25l'
+				[[ $Once == True ]] || printf '\e[?25l'
 			else
 				Exit=999
 			fi
@@ -288,10 +291,8 @@ while :; do
 
 		SSEOld=${SSE//[![:digit:]]}
 	else
-		if [[ $Once != True ]]; then
-			# Like: `tput ed` then `tput rmcup`
-			printf '\e[J\e[?1049l\e[23;0;0t'
-		fi
+		# Like: `tput ed` then `tput rmcup`
+		[[ $Once == True ]] || printf '\e[J\e[?1049l\e[23;0;0t'
 
 		FileNotFoundErr='True'
 		exit 1
