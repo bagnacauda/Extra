@@ -3,7 +3,7 @@
 #------------------------------------------------------------------------------
 # Project Name      - Extra/source/autoexec/autoexec
 # Started On        - Thu 31 Oct 22:49:41 GMT 2019
-# Last Change       - Fri 29 Apr 18:02:27 BST 2022
+# Last Change       - Fri 29 Apr 18:32:41 BST 2022
 # Author E-Mail     - terminalforlife@yahoo.com
 # Author GitHub     - https://github.com/terminalforlife
 #------------------------------------------------------------------------------
@@ -13,6 +13,7 @@
 #
 # Bugs:
 #
+#TODO: Fix AE's inability to auto-load shebang changes.
 #TODO: Using AutoExec for man pages (pagers) is buggy, but functional.
 #
 #      More specifically, the prompt shows through and when ^C-ing, the last
@@ -62,7 +63,10 @@ Err() {
 	(( $1 > 0 )) && exit $1
 }
 
-TIMEFORMAT='[R:%3R|U:%3U|S:%3S|P:%P]'
+# Don't override the user's own.
+if [[ -z $TIMEFORMAT ]]; then
+	TIMEFORMAT='[R:%3R|U:%3U|S:%3S|P:%P]'
+fi
 
 Check='False'
 Color='True'
@@ -78,10 +82,10 @@ while [[ -n $1 ]]; do
 	case $1 in
 		--)
 			break ;;
-		--help|-h|-\?)
+		--help|-h)
 			Usage; exit 0 ;;
 		--version|-v)
-			printf "%s\n" "$CurVer"; exit 0 ;;
+			printf '%s\n' "$CurVer"; exit 0 ;;
 		--exec|-e)
 			shift
 
@@ -216,8 +220,6 @@ while :; do
 		# This test is exactly what breaks the ability for AE to automatically
 		# read the shebang without reloading AE. I believe this is a fairly
 		# easy fix. Thank you, Smeueg for pointing this out!
-		#
-		#TODO: Fix AE's inability to auto-load shebang changes.
 		if [[ -z $Exec ]]; then
 			read SheBang < "$ExecFile"
 
@@ -246,11 +248,11 @@ while :; do
 
 			# If using DASH, BASH, or ZSH, check for errors before executing.
 			if [[ $Check == True ]]; then
-				unset Errors
-				case ${Exec%% *} in
-					bash|zsh)
+				Errors=
+				case $Exec in
+					*/bash|*/zsh|*/env\ bash|*/env\ zsh)
 						$Exec -n "$ExecFile" || Errors='True' ;;
-					sh)
+					*/dash|*/env\ dash|*/sh|*/env\ sh)
 						File=`type -P sh`
 						Link=`realpath "$File"`
 						if [[ $Link == /bin/dash ]]; then
