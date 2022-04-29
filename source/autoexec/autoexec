@@ -3,7 +3,7 @@
 #------------------------------------------------------------------------------
 # Project Name      - Extra/source/autoexec/autoexec
 # Started On        - Thu 31 Oct 22:49:41 GMT 2019
-# Last Change       - Wed 27 Apr 15:37:04 BST 2022
+# Last Change       - Fri 29 Apr 18:02:27 BST 2022
 # Author E-Mail     - terminalforlife@yahoo.com
 # Author GitHub     - https://github.com/terminalforlife
 #------------------------------------------------------------------------------
@@ -27,7 +27,7 @@
 #   file (>= 1:5.32-2)
 #------------------------------------------------------------------------------
 
-CurVer='2022-04-27'
+CurVer='2022-04-29'
 Progrm=${0##*/}
 ProgrmFancy='AE'
 
@@ -199,12 +199,9 @@ fi
 if [[ $Once != True ]]; then
 	shopt -s checkwinsize
 
-	# Like: `tput clear` then `tput civis`
-	printf '\e[3J\e[H\e[2J\e[?25l'
-
 	WinchHandler() {
-		# Like: `tput clear`
-		printf '\e[3J\e[H\e[2J'
+		# Like: `tput clear` (+ needed microsleep)
+		printf '\e[3J\e[H\e[2J'; (:)
 	}
 
 	trap WinchHandler WINCH
@@ -215,6 +212,12 @@ fi
 while :; do
 	if [[ -f $ExecFile && -r $ExecFile ]]; then
 		# Determine the interpreter to use.
+		#
+		# This test is exactly what breaks the ability for AE to automatically
+		# read the shebang without reloading AE. I believe this is a fairly
+		# easy fix. Thank you, Smeueg for pointing this out!
+		#
+		#TODO: Fix AE's inability to auto-load shebang changes.
 		if [[ -z $Exec ]]; then
 			read SheBang < "$ExecFile"
 
